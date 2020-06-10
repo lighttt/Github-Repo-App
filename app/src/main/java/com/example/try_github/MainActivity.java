@@ -1,5 +1,6 @@
 package com.example.try_github;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.AsyncTask;
@@ -26,17 +27,29 @@ public class MainActivity extends AppCompatActivity {
     private TextView mErrorMessageDisplay;
     private ProgressBar mLoadingIndicator;
 
+    private static final String SEARCH_QUERY_URL = "searchUrl";
+    private static final String SEARCH_JSON_DATA = "searchJsonData";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mSearchBoxEditText = (EditText) findViewById(R.id.et_search_box);
+        mSearchBoxEditText =  findViewById(R.id.et_search_box);
 
-        mUrlDisplayTextView = (TextView) findViewById(R.id.tv_url_display);
-        mSearchResultsTextView = (TextView) findViewById(R.id.tv_github_search_results_json);
+        mUrlDisplayTextView = findViewById(R.id.tv_url_display);
+        mSearchResultsTextView = findViewById(R.id.tv_github_search_results_json);
 
-        mErrorMessageDisplay = (TextView) findViewById(R.id.tv_error_message_display);
-        mLoadingIndicator = (ProgressBar) findViewById(R.id.pb_loading_indicator);
+        mErrorMessageDisplay = findViewById(R.id.tv_error_message_display);
+        mLoadingIndicator =  findViewById(R.id.pb_loading_indicator);
+
+        if(savedInstanceState!=null)
+        {
+            String queryUrl = savedInstanceState.getString(SEARCH_QUERY_URL);
+            String jsonData = savedInstanceState.getString(SEARCH_JSON_DATA);
+
+            mUrlDisplayTextView.setText(queryUrl);
+            mSearchResultsTextView.setText(jsonData);
+        }
 
     }
     private void makeGithubSearchQuery() {
@@ -110,6 +123,19 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+
+    // ------------- SAVING INSTANCE ----------------------------
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        String queryUrl = mUrlDisplayTextView.getText().toString();
+        String jsonData = mSearchResultsTextView.getText().toString();
+
+        outState.putString(SEARCH_QUERY_URL,queryUrl);
+        outState.putString(SEARCH_JSON_DATA,jsonData);
     }
 }
 
