@@ -49,6 +49,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         mErrorMessageDisplay = findViewById(R.id.tv_error_message_display);
         mLoadingIndicator =  findViewById(R.id.pb_loading_indicator);
 
+        // Getting data from bundle
         if(savedInstanceState!=null)
         {
             String queryUrl = savedInstanceState.getString(SEARCH_QUERY_URL);
@@ -61,7 +62,9 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         getSupportLoaderManager().initLoader(GITHUB_SEARCH_LOADER,null,this);
 
     }
-    
+
+    // ------------- ASYNC FUNCTIONS ----------------------------
+
     private void makeGithubSearchQuery() {
         mSearchResultsTextView.setText("");
         String githubQuery = mSearchBoxEditText.getText().toString();
@@ -96,11 +99,14 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         mErrorMessageDisplay.setVisibility(View.VISIBLE);
     }
 
+    // ------------- ASYNC TASK LOADER ----------------------------
+
     @NonNull
     @Override
     public Loader<String> onCreateLoader(int id, final Bundle args) {
         return new AsyncTaskLoader<String>(this) {
 
+            String mGithubJson;
 
             @Override
             protected void onStartLoading() {
@@ -108,8 +114,12 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
                {
                    return;
                }
-                mLoadingIndicator.setVisibility(View.VISIBLE);
-               forceLoad();
+                if (mGithubJson != null) {
+                    deliverResult(mGithubJson);
+                }else{
+                    mLoadingIndicator.setVisibility(View.VISIBLE);
+                    forceLoad();
+                }
             }
 
             @Nullable
@@ -128,6 +138,12 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
                     e.printStackTrace();
                     return null;
                 }
+            }
+
+            @Override
+            public void deliverResult(@Nullable String githubJSon) {
+                mGithubJson = githubJSon;
+                super.deliverResult(githubJSon);
             }
         };
     }
@@ -148,6 +164,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
     }
 
+    // ------------- MENUS ----------------------------
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
