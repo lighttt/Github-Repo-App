@@ -1,10 +1,15 @@
 package com.example.try_github;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.loader.app.LoaderManager;
+import androidx.loader.content.AsyncTaskLoader;
+import androidx.loader.content.Loader;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -17,7 +22,7 @@ import com.example.try_github.utilities.NetworkUtils;
 import java.io.IOException;
 import java.net.URL;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<String> {
 
     private EditText mSearchBoxEditText;
 
@@ -29,6 +34,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String SEARCH_QUERY_URL = "searchUrl";
     private static final String SEARCH_JSON_DATA = "searchJsonData";
+
+    private static final int GITHUB_SEARCH_LOADER = 22;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,13 +57,29 @@ public class MainActivity extends AppCompatActivity {
             mUrlDisplayTextView.setText(queryUrl);
             mSearchResultsTextView.setText(jsonData);
         }
+        //Initialize the loader
+        getSupportLoaderManager().initLoader(GITHUB_SEARCH_LOADER,null,this);
 
     }
+    
     private void makeGithubSearchQuery() {
+        mSearchResultsTextView.setText("");
         String githubQuery = mSearchBoxEditText.getText().toString();
         URL githubSearchUrl = NetworkUtils.buildUrl(githubQuery);
         mUrlDisplayTextView.setText(githubSearchUrl.toString());
-        new GithubQueryTask().execute(githubSearchUrl);
+
+        Bundle queryBundle = new Bundle();
+        queryBundle.putString(SEARCH_QUERY_URL,githubSearchUrl.toString());
+
+        LoaderManager loaderManager = getSupportLoaderManager();
+        Loader<String> githubSearchLoader = loaderManager.getLoader(GITHUB_SEARCH_LOADER);
+        if(githubSearchLoader == null)
+        {
+            loaderManager.initLoader(GITHUB_SEARCH_LOADER,queryBundle,this);
+        }
+        else{
+            loaderManager.restartLoader(GITHUB_SEARCH_LOADER,queryBundle,this);
+        }
     }
 
     private void showJsonDataView() {
@@ -73,41 +96,58 @@ public class MainActivity extends AppCompatActivity {
         mErrorMessageDisplay.setVisibility(View.VISIBLE);
     }
 
-    public class GithubQueryTask extends AsyncTask<URL, Void, String> {
+    @NonNull
+    @Override
+    public Loader<String> onCreateLoader(int id, final Bundle args) {
+        return new AsyncTaskLoader<String>(this) {
 
-        // COMPLETED (26) Override onPreExecute to set the loading indicator to visible
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            mLoadingIndicator.setVisibility(View.VISIBLE);
-        }
 
-        @Override
-        protected String doInBackground(URL... params) {
-            URL searchUrl = params[0];
-            String githubSearchResults = null;
-            try {
-                githubSearchResults = NetworkUtils.getResponseFromHttpUrl(searchUrl);
-            } catch (IOException e) {
-                e.printStackTrace();
+            @Override
+            protected void onStartLoading() {
+               if(args==null)
+               {
+                   return;
+               }
+                mLoadingIndicator.setVisibility(View.VISIBLE);
+               forceLoad();
             }
-            return githubSearchResults;
-        }
 
-        @Override
-        protected void onPostExecute(String githubSearchResults) {
-            // COMPLETED (27) As soon as the loading is complete, hide the loading indicator
-            mLoadingIndicator.setVisibility(View.INVISIBLE);
-            if (githubSearchResults != null && !githubSearchResults.equals("")) {
-                // COMPLETED (17) Call showJsonDataView if we have valid, non-null results
-                showJsonDataView();
-                mSearchResultsTextView.setText(githubSearchResults);
-            } else {
-                // COMPLETED (16) Call showErrorMessage if the result is null in onPostExecute
-                showErrorMessage();
+            @Nullable
+            @Override
+            public String loadInBackground() {
+                String searchQueryUrl = args.getString(SEARCH_QUERY_URL);
+                if(searchQueryUrl==null || TextUtils.isEmpty(searchQueryUrl))
+                {
+                    return null;
+                }
+                try {
+                    URL searchUrl = new URL(searchQueryUrl);
+                    String githubSearchResults = NetworkUtils.getResponseFromHttpUrl(searchUrl);
+                    return  githubSearchResults;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return null;
+                }
             }
+        };
+    }
+
+    @Override
+    public void onLoadFinished(@NonNull Loader<String> loader, String data) {
+        mLoadingIndicator.setVisibility(View.INVISIBLE);
+        if (data != null && !data.equals("")) {
+            showJsonDataView();
+            mSearchResultsTextView.setText(data);
+        } else {
+            showErrorMessage();
         }
     }
+
+    @Override
+    public void onLoaderReset(@NonNull Loader<String> loader) {
+
+    }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
